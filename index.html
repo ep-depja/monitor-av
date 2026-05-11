@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>DEPJA - Monitor de Auditoría (Versión Definitiva)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; @apply bg-slate-50 text-slate-900; }
+        .glass-card { @apply bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden; }
+        .custom-select { @apply bg-slate-100 border-none rounded-xl px-4 py-2 font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-xs cursor-pointer; }
+        .header-gradient { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+        th { @apply pb-4 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b text-center; }
+        .row-ap { @apply text-[9px] text-slate-500 bg-slate-50/30 italic; }
+    </style>
+</head>
+<body>
+
+    <header class="header-gradient text-white p-6 shadow-2xl sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tighter text-indigo-300 uppercase">DEPJA <span class="text-white font-light italic">Monitor</span></h1>
+                <p class="text-[10px] uppercase tracking-widest opacity-60 italic">Gestión de Calidad Educativa Digital</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="dataStatus" class="text-[10px] font-bold bg-indigo-500/30 px-3 py-1 rounded-full border border-indigo-400/30">Cargando...</span>
+                <button onclick="sincronizar()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-full font-bold text-xs transition-all shadow-lg active:scale-95">SINCRO</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-8">
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="glass-card p-8">
+                <h2 class="text-xs font-black mb-6 text-slate-400 uppercase tracking-widest border-l-4 border-indigo-500 pl-3">Aulas Auditadas por CENS (Volumen)</h2>
+                <div class="h-64"><canvas id="chartBarras"></canvas></div>
+            </div>
+            <div class="glass-card p-8">
+                <h2 class="text-xs font-black mb-6 text-slate-400 uppercase tracking-widest border-l-4 border-emerald-500 pl-3">Nivel de Cumplimiento General (%)</h2>
+                <div class="h-64"><canvas id="chartProgreso"></canvas></div>
+            </div>
+        </section>
+
+        <section class="glass-card p-8">
+            <div class="flex flex-wrap justify-between items-end border-b pb-6 mb-8 gap-4">
+                <div>
+                    <h2 class="font-black text-indigo-950 text-xl uppercase italic">1. Radiografía Institucional</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase">Consolidado por CENS seleccionado</p>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[9px] font-bold text-indigo-500 uppercase mb-1">CENS Seleccionado</span>
+                    <select id="selCens" onchange="cambioCens()" class="custom-select w-64"></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div class="lg:col-span-2 overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Componente Pedagógico</th>
+                                <th class="text-emerald-600">Si (%)</th>
+                                <th class="text-amber-500">Parcial (%)</th>
+                                <th class="text-rose-500">No (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEscuela" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-center p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <div class="w-full h-64"><canvas id="radarEscuela"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card p-8">
+            <div class="flex flex-wrap justify-between items-end border-b pb-6 mb-8 gap-6">
+                <div>
+                    <h2 class="font-black text-indigo-950 text-xl uppercase italic">2. Radiografía por Año y División</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase">Agrupación por trayectorias</p>
+                </div>
+                <div class="flex gap-4">
+                    <select id="selAnio" onchange="cambioAnio()" class="custom-select w-32"></select>
+                    <select id="selDiv" onchange="cambioDiv()" class="custom-select w-32"></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div class="lg:col-span-2 overflow-x-auto">
+                    <table class="w-full text-[11px] text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Sección del Curso</th>
+                                <th class="text-emerald-600">Si (%)</th>
+                                <th class="text-amber-500">Parcial (%)</th>
+                                <th class="text-rose-500">No (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaCurso" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <div class="h-64"><canvas id="radarCurso"></canvas></div>
+            </div>
+        </section>
+
+        <section class="glass-card p-8 border-2 border-indigo-100">
+            <div class="flex flex-wrap justify-between items-end border-b pb-6 mb-8 gap-6">
+                <div>
+                    <h2 class="font-black text-indigo-950 text-xl uppercase italic">3. Radiografía por Aula (Espacio Curricular)</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase">Auditoría granular de contenidos</p>
+                </div>
+                <select id="selMateria" onchange="renderRadiografiaAula()" class="custom-select w-80"></select>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div class="lg:col-span-2 overflow-x-auto">
+                    <table class="w-full text-[10px] text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Indicador de Aula</th>
+                                <th class="text-emerald-600">Cumple (%)</th>
+                                <th class="text-amber-500">Parcial (%)</th>
+                                <th class="text-rose-500">Falta (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaAula" class="divide-y"></tbody>
+                    </table>
+                </div>
+                <div class="flex flex-col items-center justify-center p-6 bg-indigo-50/30 rounded-[2rem] border border-indigo-50 relative">
+                    <div id="badgePrioridad" class="absolute top-6"></div>
+                    <div class="w-full h-64 mt-4"><canvas id="radarAula"></canvas></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        Chart.register(ChartDataLabels);
+        const API_URL = "https://script.google.com/macros/s/AKfycby4Ej6fM_v45gF4GFH6rw_wRT3_oxXcUBxSDGXJXVj9-V9yA3MPtb-9XMQdwVWRODQ0/exec";
+        let dbCuanti = [], dbCuali = [], charts = {};
+
+        const SECCIONES = [
+            { label: "Vista Inicial", key: "Vista_Inicial" },
+            { label: "Mosaico Presentación", key: "Mosaico:_Presentación" },
+            { label: "Aprendizajes Prioritarios", key: "Aprendizajes_Prioritarios" },
+            { label: "Espacio Comunicación", key: "Mosaico:_Espacio_de_Comunicación" },
+            { label: "Autoevaluación", key: "Autoevaluación" },
+            { label: "Coloquio", key: "Mosaico_Coloquio" }
+        ];
+
+        const DETALLE_AP = ["Nombre_del_Aprendizaje", "Comencemos", "Agenda", "Pasos_para_avanzar", "Video_Clase", "Apuntes_de_clase", "Cuestionario", "Práctica_de_Integración", "Encuentros_sincrónicos"];
+        const naturalSort = (a, b) => String(a).localeCompare(String(b), undefined, {numeric: true});
+
+        async function sincronizar() {
+            try {
+                document.getElementById('dataStatus').innerText = "⏳ Sincronizando...";
+                const [r1, r2] = await Promise.all([
+                    fetch(`${API_URL}?hoja=Transf`).then(r => r.json()),
+                    fetch(`${API_URL}?hoja=Query`).then(r => r.json())
+                ]);
+                dbCuanti = r1.filter(f => f.CENS);
+                dbCuali = r2.filter(f => f.CENS);
+
+                document.getElementById('dataStatus').innerText = "✅ Datos Actualizados";
+                const censList = [...new Set(dbCuali.map(d => d.CENS))].sort(naturalSort);
+                document.getElementById('selCens').innerHTML = '<option value="TODOS">🌍 PROVINCIA (CONSOLIDADO)</option>' +
+                    censList.map(c => `<option value="${c}">🏫 CENS ${c}</option>`).join('');
+
+                renderEstadisticasTop();
+                cambioCens();
+            } catch (e) { document.getElementById('dataStatus').innerText = "❌ Error de Red"; }
+        }
+
+        function renderEstadisticasTop() {
+            const stats = {};
+            dbCuanti.forEach(a => {
+                if(!stats[a.CENS]) stats[a.CENS] = { suma: 0, n: 0 };
+                stats[a.CENS].suma += (parseFloat(a["IG%"]) || 0) * 100;
+                stats[a.CENS].n++;
+            });
+            const d = Object.keys(stats).map(k => ({ id: k, av: stats[k].suma/stats[k].n, cant: stats[k].n })).sort((a,b)=> naturalSort(a.id, b.id));
+            dibujarBarra('chartBarras', d.map(x=>"CENS "+x.id), d.map(x=>x.cant), '#6366f1', false);
+            dibujarBarra('chartProgreso', d.map(x=>"CENS "+x.id), d.map(x=>x.av), '#10b981', true);
+        }
+
+        function cambioCens() {
+            const cens = document.getElementById('selCens').value;
+            const pool = (cens === "TODOS") ? dbCuali : dbCuali.filter(d => d.CENS == cens);
+            const anios = [...new Set(pool.map(a => a.Año))].filter(a => a).sort(naturalSort);
+            document.getElementById('selAnio').innerHTML = '<option value="TODOS">AÑO</option>' + anios.map(a => `<option value="${a}">${a}° AÑO</option>`).join('');
+            renderRadiografiaEscuela();
+            cambioAnio();
+        }
+
+        function cambioAnio() {
+            const cens = document.getElementById('selCens').value;
+            const anio = document.getElementById('selAnio').value;
+            let pool = (cens === "TODOS") ? dbCuali : dbCuali.filter(d => d.CENS == cens);
+            if(anio !== "TODOS") pool = pool.filter(p => p.Año == anio);
+            const divs = [...new Set(pool.map(a => a.Div))].filter(d => d !== null).sort(naturalSort);
+            document.getElementById('selDiv').innerHTML = '<option value="TODOS">DIVISIÓN</option>' + divs.map(d => `<option value="${d}">${d || 'Única'}</option>`).join('');
+            cambioDiv();
+        }
+
+        function cambioDiv() {
+            const cens = document.getElementById('selCens').value;
+            const anio = document.getElementById('selAnio').value;
+            const div = document.getElementById('selDiv').value;
+            let pool = (cens === "TODOS") ? dbCuali : dbCuali.filter(d => d.CENS == cens);
+            if(anio !== "TODOS") pool = pool.filter(p => p.Año == anio);
+            if(div !== "TODOS") pool = pool.filter(p => p.Div == div);
+            const materias = [...new Set(pool.map(a => a.Espacios_Curriculares))].filter(m => m).sort(naturalSort);
+            document.getElementById('selMateria').innerHTML = '<option value="TODAS">TODAS LAS MATERIAS</option>' + materias.map(m => `<option value="${m}">${m}</option>`).join('');
+            renderRadiografiaCurso();
+            renderRadiografiaAula();
+        }
+
+        function calcularPorcentajes(data) {
+            let resultados = [];
+            SECCIONES.forEach(sec => {
+                let si = 0, parc = 0, no = 0, total = 0;
+                data.forEach(item => {
+                    Object.keys(item).forEach(key => {
+                        if (key.includes(sec.key)) {
+                            const v = String(item[key]);
+                            if (v.includes("✅")) si++; else if (v.includes("🤏")) parc++; else if (v.includes("❌")) no++;
+                            total++;
+                        }
+                    });
+                });
+                total = total || 1;
+                resultados.push({ label: sec.label, si: (si/total)*100, parc: (parc/total)*100, no: (no/total)*100 });
+            });
+            return resultados;
+        }
+
+        function renderRadiografiaEscuela() {
+            const pool = (document.getElementById('selCens').value === "TODOS") ? dbCuali : dbCuali.filter(d => d.CENS == document.getElementById('selCens').value);
+            const res = calcularPorcentajes(pool);
+            document.getElementById('tablaEscuela').innerHTML = res.map(r => `<tr><td class="py-4 font-bold text-slate-700">${r.label}</td><td class="text-center text-emerald-600 font-bold">${r.si.toFixed(1)}%</td><td class="text-center text-amber-500 font-bold">${r.parc.toFixed(1)}%</td><td class="text-center text-rose-500 font-bold">${r.no.toFixed(1)}%</td></tr>`).join('');
+            dibujarRadar('radarEscuela', res.map(r => r.si));
+        }
+
+        function renderRadiografiaCurso() {
+            let pool = dbCuali;
+            if(document.getElementById('selCens').value !== "TODOS") pool = pool.filter(d => d.CENS == document.getElementById('selCens').value);
+            if(document.getElementById('selAnio').value !== "TODOS") pool = pool.filter(p => p.Año == document.getElementById('selAnio').value);
+            if(document.getElementById('selDiv').value !== "TODOS") pool = pool.filter(p => p.Div == document.getElementById('selDiv').value);
+            const res = calcularPorcentajes(pool);
+            document.getElementById('tablaCurso').innerHTML = res.map(r => `<tr><td class="py-3 font-bold text-slate-600">${r.label}</td><td class="text-center text-emerald-600 font-bold">${r.si.toFixed(1)}%</td><td class="text-center text-amber-500 font-bold">${r.parc.toFixed(1)}%</td><td class="text-center text-rose-500 font-bold">${r.no.toFixed(1)}%</td></tr>`).join('');
+            dibujarRadar('radarCurso', res.map(r => r.si));
+        }
+
+        function renderRadiografiaAula() {
+            let pool = dbCuali;
+            if(document.getElementById('selCens').value !== "TODOS") pool = pool.filter(d => d.CENS == document.getElementById('selCens').value);
+            if(document.getElementById('selAnio').value !== "TODOS") pool = pool.filter(p => p.Año == document.getElementById('selAnio').value);
+            if(document.getElementById('selDiv').value !== "TODOS") pool = pool.filter(p => p.Div == document.getElementById('selDiv').value);
+            if(document.getElementById('selMateria').value !== "TODAS") pool = pool.filter(p => p.Espacios_Curriculares == document.getElementById('selMateria').value);
+
+            const res = calcularPorcentajes(pool);
+            let html = "";
+            res.forEach((r) => {
+                html += `<tr class="bg-indigo-50/40 font-black"><td class="p-2 border-l-4 border-indigo-400 text-indigo-900 uppercase text-[9px]">${r.label}</td><td class="text-center">${r.si.toFixed(1)}%</td><td class="text-center">${r.parc.toFixed(1)}%</td><td class="text-center">${r.no.toFixed(1)}%</td></tr>`;
+                if(r.label.includes("Aprendizajes")) {
+                    DETALLE_AP.forEach(det => {
+                        let dSi=0, dNo=0, dPa=0, dT=0;
+                        pool.forEach(a => { Object.keys(a).filter(k => k.includes("Aprendizajes") && k.includes(det)).forEach(k => { const v = String(a[k]); if (v.includes("✅")) dSi++; else if (v.includes("🤏")) dPa++; else if (v.includes("❌")) dNo++; dT++; }); });
+                        dT = dT || 1; html += `<tr class="row-ap border-b"><td class="pl-8 py-1">→ ${det.replace(/_/g,' ')}</td><td class="text-center">${((dSi/dT)*100).toFixed(1)}%</td><td class="text-center">${((dPa/dT)*100).toFixed(1)}%</td><td class="text-center">${((dNo/dT)*100).toFixed(1)}%</td></tr>`;
+                    });
+                }
+            });
+            document.getElementById('tablaAula').innerHTML = html;
+            dibujarRadar('radarAula', res.map(r => r.si));
+            const avg = res.reduce((a,b)=>a+b.si, 0) / res.length;
+            document.getElementById('badgePrioridad').innerHTML = `<span class="px-4 py-1 rounded-full text-[9px] font-black text-white shadow-lg ${avg < 40 ? 'bg-rose-600' : (avg < 80 ? 'bg-amber-500' : 'bg-emerald-500')}">${avg < 40 ? 'ATENCIÓN URGENTE' : (avg < 80 ? 'MEJORA NECESARIA' : 'SITUACIÓN ÓPTIMA')}</span>`;
+        }
+
+        function dibujarBarra(id, labels, data, color, isH) {
+            if(charts[id]) charts[id].destroy();
+            charts[id] = new Chart(document.getElementById(id), {
+                type: 'bar', data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 10 }] },
+                options: { indexAxis: isH ? 'y' : 'x', maintainAspectRatio: false, plugins: { datalabels: { color: '#fff', font: { weight: 'bold', size: 9 }, formatter: v => isH ? v.toFixed(1)+'%' : v }, legend: { display: false } }, scales: { x: { max: isH ? 100 : undefined, grid: { display: false } }, y: { grid: { display: false } } } }
+            });
+        }
+
+        function dibujarRadar(id, data) {
+            if(charts[id]) charts[id].destroy();
+            charts[id] = new Chart(document.getElementById(id), {
+                type: 'radar', data: { labels: ["Vista", "Pres.", "AP", "Com.", "Auto.", "Coloq."], datasets: [{ data, backgroundColor: 'rgba(79, 70, 229, 0.1)', borderColor: '#4f46e5', borderWidth: 2, pointRadius: 2 }] },
+                options: { maintainAspectRatio: false, plugins: { datalabels: { display: false }, legend: { display: false } }, scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: '#e2e8f0' } } } }
+            });
+        }
+
+        window.onload = sincronizar;
+    </script>
+</body>
+</html>
